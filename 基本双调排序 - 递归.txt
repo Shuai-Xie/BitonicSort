@@ -1,0 +1,60 @@
+#include <iostream>
+#include <iomanip>
+
+using namespace std;
+
+// 打印数列
+void printArr(int *arr, int len) {
+    for (int i = 0; i < len; ++i) {
+        cout << setw(4) << arr[i];
+    }
+    cout << endl << endl;
+}
+
+// 双调归并成有序
+void bitonicMerge(int *arr, int len, bool asd) {
+    if (len > 1) {
+        int m = len / 2;
+        for (int i = 0; i < m; ++i) {
+            if (arr[i] > arr[i + m] == asd) swap(arr[i], arr[i + m]);
+        }
+        // for结束，形成2个双调序列
+        // arr[0..m-1] < arr[m..len-1] 再将两段序列都asd排列
+        bitonicMerge(arr, m, asd);
+        bitonicMerge(arr + m, m, asd);
+    }
+}
+
+// 双调排序
+void bitonicSort(int *arr, int len, bool asd) { // asd 升序
+    if (len > 1) {
+        int m = len / 2;
+        // 先升序再降序，先降序再升序 不影响
+        bitonicSort(arr, m, asd);
+        bitonicSort(arr + m, m, !asd);
+        bitonicMerge(arr, len, asd);
+    }
+}
+
+
+int main() {
+    int len = 32;
+    auto *arr = new int[len]; // 自动识别类型
+    bool asd = true; // 默认升序
+
+    // 1.随机生成无序序列
+    srandom((unsigned int) time(nullptr)); // 设置seed对应random()函数
+
+    for (int i = 0; i < len; ++i) {
+        arr[i] = (int)random() % 100; // 随机生成100内的正整数
+    }
+
+    cout << "无序序列: ";
+    printArr(arr, len);
+
+    bitonicSort(arr, len, asd);
+
+    cout << "有序序列: ";
+    printArr(arr, len); // 有序序列
+
+}

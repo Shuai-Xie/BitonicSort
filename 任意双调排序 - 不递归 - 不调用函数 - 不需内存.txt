@@ -1,0 +1,119 @@
+#include <iostream>
+#include <iomanip>
+
+using namespace std;
+
+// 打印数列
+void printArr(int *arr, int len) {
+    for (int i = 0; i < len; ++i) {
+        cout << setw(4) << arr[i];
+    }
+    cout << endl << endl;
+}
+
+/**
+ * 不递归任意双调排序 思路参考归并排序 自底向上 两段归一
+ * @param arr 数列
+ * @param len 数列长度
+ */
+void bitonicSort(int *arr, int len) {
+
+    // 外部归并参数
+    int left_min, left_max, right_min, right_max;
+
+    int k = 1;
+    while (k < len) k = k << 1;
+    int step_max = k >> 1;
+
+    for (int step = 1; step < len; step *= 2) {
+
+        // 升降序标志
+        bool asd = (step == step_max); // 相等，全局升序，否则，前半降序后半升序
+
+        for (left_min = 0; left_min < len; left_min = right_max) {
+
+            left_max = left_min + step;     // 左边终止位置
+            right_min = left_max;           // 右边起始位置
+            right_max = right_min + step;   // 右边终止位置 也是for中下一段的开始
+
+            if (right_max > len) right_max = len;   // 处理数列长度 !=2^n 的情况
+
+            // 完成 [left_min, left_max] [right_min, right_max] 这两段的双调排序
+
+            // 1. 外层排序
+            // 保证段中所有元素满足 [left_min, left_max] < [right_min, right_max]
+            int begin = left_min; // 记住父序列初始的位置
+            while (left_min < left_max && right_min < right_max) {
+                if (arr[left_min] > arr[right_min] == asd) {
+                    // swap(arr[left_min], arr[right_min]); 交换二值
+                    arr[left_min] = arr[left_min] ^ arr[right_min];
+                    arr[right_min] = arr[left_min] ^ arr[right_min];
+                    arr[left_min] = arr[left_min] ^ arr[right_min];
+                }
+                left_min++;
+                right_min++;
+            }
+
+            // 2. 内层排序
+            // 自上而下调整 [left_min, right_max] 整段序列为单调序列
+            int c_step = step;
+            while (c_step > 1) {
+                c_step /= 2; // 内部首先step减半
+
+                // 内部归并参数
+                int c_left_min, c_left_max, c_right_min, c_right_max;
+
+                // begin      父序列开始的位置
+                // right_max  父序列终止的位置
+                for (c_left_min = begin; c_left_min < right_max; c_left_min = c_right_max) {
+
+                    c_left_max = c_left_min + c_step;
+                    c_right_min = c_left_max;
+                    c_right_max = c_right_min + c_step;
+
+                    if (c_right_max > right_max) c_right_max = right_max;
+
+                    while (c_left_min < c_left_max && c_right_min < c_right_max) {
+                        if (arr[c_left_min] > arr[c_right_min] == asd) {
+                            // swap(arr[c_left_min], arr[c_right_min]); 交换二值
+                            arr[c_left_min] = arr[c_left_min] ^ arr[c_right_min];
+                            arr[c_right_min] = arr[c_left_min] ^ arr[c_right_min];
+                            arr[c_left_min] = arr[c_left_min] ^ arr[c_right_min];
+                        }
+                        c_left_min++;
+                        c_right_min++;
+                    }
+                }
+            }
+
+            // 打印子序列
+            cout << "外层步长: " << step << ", ";
+            printArr(arr + begin, right_max - begin);
+
+            // 改变排序规则 因为要求双调 单调性交替变化
+            asd = !asd;
+        }
+
+        cout << endl << endl;
+    }
+
+}
+
+
+int main() {
+    int len = 11;
+    auto *arr = new int[len]; // 自动识别类型
+
+    srandom((unsigned int) time(nullptr));
+    for (int i = 0; i < len; ++i)
+        arr[i] = (int) random() % 100; // 随机生成100内的正整数
+
+    cout << "无序序列: ";
+    printArr(arr, len);
+
+    bitonicSort(arr, len);
+
+    cout << "有序序列: ";
+    printArr(arr, len); // 有序序列
+
+}

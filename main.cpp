@@ -1,0 +1,198 @@
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+#include <sys/time.h>
+
+#define NaN (float)sqrt(-1.0)
+
+using namespace std;
+
+// 打印各种类型的数列
+template<typename T>
+void printArr(T *arr, int len) {
+    for (int i = 0; i < len; ++i) {
+        if (arr[i] == NaN) cout << setw(10) << "NaN";
+        else cout << setw(10) << setprecision(3) << setiosflags(ios::fixed) << arr[i]; // 固定3位小数
+    }
+    cout << endl;
+}
+
+// 获得毫秒级时间
+long getCurrentTime() {
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+/**
+ * 分段双调排序
+ * @param data 原始数据
+ * @param seg_id data 中 n 个元素各自所在的段编号
+ * @param seg_start 共有 m+1 个元素，前 m 个分别给出 0..m-1 共 m 个段的起始位置，seg_start[m] = n
+ * @param n data 中包含 n 个数据
+ * @param m data 分为 m 段数据
+ */
+void segmentedBitonicSort(float *data, int *seg_id, int *seg_start, int n, int m) {
+
+    for (int i = 0; i < m; ++i) {
+
+        // 1.拿到每一段序列的起始位置和长度
+        float *arr = data + seg_start[i]; // 指针类型 记录子序列起始位置
+        int len = seg_start[i + 1] - seg_start[i]; // 子序列长度
+
+        // 2.适用于任意数列长度的双调排序排序子序列
+
+        // 2.1
+        // 用 step_max 记录最后归并成有序序列的界限值
+        // 用位操作求界限值：不大于 len 的最大 2 的幂次方
+        int k = 1;
+        while (k < len) k = k << 1;
+        int step_max = k >> 1;
+
+        for (int step = 1; step < len; step *= 2) {
+
+            // 2.2
+            // step_max 影响着序列排序的升降序标志
+            // 如果 step < step_max，按照先降序后升序的方式调整整个序列为多个步长为step的双调序列，step 逐渐增大...
+            // 如果 step = step_max，说明全局序列经过外部归并成了一个双调序列，之后进行内部归并，就成了完整的增序序列
+            bool asd = (step == step_max); // 相等，全局升序，否则，先降序后升序的单调性递变序列
+
+            // 外部归并参数
+            int left_min, left_max, right_min, right_max;
+            for (left_min = 0; left_min < len; left_min = right_max) {
+
+                left_max = left_min + step;     // 左边终止位置
+                right_min = left_max;           // 右边起始位置
+                right_max = right_min + step;   // 右边终止位置 也是for中下一段的开始
+
+                if (right_max > len) right_max = len;   // 处理数列长度 !=2^n 的情况
+
+                // 2.3
+                // 通过外层排序和内层排序（2个while）
+                // 将 [left_min, right_max] 这段序列排序成 asd 规定的升序或降序序列
+
+                // 2.3.1
+                // 外层排序
+                // 保证排序结束后，段中所有元素满足 [left_min, left_max] < [right_min, right_max]
+                int begin = left_min; // 记住父序列初始的位置
+                while (left_min < left_max && right_min < right_max) {
+
+                    // todo 尝试解决 NaN 问题
+                    while (arr[left_min] == NaN && left_min < left_max) left_min++;
+                    while (arr[right_min] == NaN && right_min < right_max) right_min++;
+
+                    if (left_min >= left_max || right_min >= right_max) break;
+
+                    // 根据 asd，确定交换方式
+                    if (arr[left_min] > arr[right_min] == asd) {
+                        float tmp = arr[left_min];
+                        arr[left_min] = arr[right_min];
+                        arr[right_min] = tmp;
+                    }
+                    left_min++;
+                    right_min++;
+                }
+
+                // 2.3.2
+                // 内层排序
+                // 自上而下调整 [left_min, right_max] 整段序列为 asd 规定的升序或降序序列
+                // c_step 子序列归并的步长，c_step 递减，自上而下调整
+                int c_step = step;
+                while (c_step > 1) {
+                    c_step /= 2; // 内部首先step减半
+
+                    // 内部归并参数
+                    int c_left_min, c_left_max, c_right_min, c_right_max;
+
+                    // 子有序序列的边界
+                    // begin      父序列开始的位置
+                    // right_max  父序列终止的位置
+                    for (c_left_min = begin; c_left_min < right_max; c_left_min = c_right_max) {
+
+                        c_left_max = c_left_min + c_step;
+                        c_right_min = c_left_max;
+                        c_right_max = c_right_min + c_step;
+
+                        if (c_right_max > right_max) c_right_max = right_max;
+
+                        while (c_left_min < c_left_max && c_right_min < c_right_max) {
+
+                            // todo 尝试解决 NaN 问题
+                            while (arr[c_left_min] == NaN && c_left_min < c_left_max) c_left_min++;
+                            while (arr[c_right_min] == NaN && c_right_min < c_right_max) c_right_min++;
+
+                            if (c_left_min >= c_left_max || c_right_min >= c_right_max) break;
+
+                            // 根据 asd，确定交换方式
+                            if (arr[c_left_min] > arr[c_right_min] == asd) {
+                                float tmp = arr[c_left_min];
+                                arr[c_left_min] = arr[c_right_min];
+                                arr[c_right_min] = tmp;
+                            }
+                            c_left_min++;
+                            c_right_min++;
+                        }
+                    }
+                }
+
+                // 2.4
+                // 改变排序规则 保证步长为 step 的所有子序列 单调性交替变化
+                asd = !asd;
+            }
+        }
+    }
+}
+
+int main() {
+    // 1.随机生出待排序的序列
+    srand((unsigned int) time(nullptr));
+
+    // 1.1
+    // 随机生成 seg_start[] 和 n
+    // 自定义段数 m，通过调整 m = 10,100,1000,2000,5000 测试排序时间
+    // 之所以没用 for 执行所有测试，担心前面执行的排序后影响后面排序的时间测量
+    int m = 2000; // 自定义数据段数
+    int n = 0; // 序列总长
+    int seg_start[m + 1]; // 段首位置数组
+    seg_start[0] = 0;
+    for (int i = 0; i < m; ++i) {
+        n += 5 + rand() % 5; // 随机生成每段序列的长度 每段长度 5~10
+        seg_start[i + 1] = n;
+    }
+
+    // 1.2
+    // 随机生成数据 data，并赋予每段数据ID seg_id[]
+    float data[n]; // 数据
+    int seg_id[n]; // 数据所在段的 ID
+    for (int i = 0; i < m; ++i) {
+        int len = seg_start[i + 1] - seg_start[i];
+        int index_begin = seg_start[i]; // 每一段开始的位置
+        for (int j = 0; j < len; ++j) {
+            seg_id[index_begin + j] = i;
+            data[index_begin + j] = i + (float) (rand() % 1000) / 1000; // i+ 保证段与段之间是升序的
+        }
+    }
+    // 打印数据和每个数据的段ID
+    cout << "排序前：";
+    printArr(data, n); // 排序前
+    cout << "段落ID：";
+    printArr(seg_id, n);
+
+    // 2.记录开始时间
+    long beginTime = getCurrentTime();
+
+    // 3.分段双调排序
+    segmentedBitonicSort(data, seg_id, seg_start, n, m);
+    cout << "排序后：";
+    printArr(data, n); // 排序后
+    cout << endl;
+
+    // 3.记录结束时间
+    long endTime = getCurrentTime();
+
+    // 4.打印时间信息
+    cout << "数据段数：" << m << endl;
+    cout << "开始时间：" << beginTime << endl;
+    cout << "结束时间：" << endTime << endl;
+    cout << "时间差：" << endTime - beginTime << endl << endl;
+}

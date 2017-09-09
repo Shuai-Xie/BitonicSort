@@ -1,0 +1,84 @@
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+
+#define NaN (float)sqrt(-1.0)
+
+using namespace std;
+
+void printArr(float *arr, int len) {
+    for (int i = 0; i < len; ++i) {
+        if (arr[i] == NaN) cout << setw(5) << "NaN";
+        else cout << setw(5) << arr[i];
+    }
+    cout << endl;
+}
+
+int getGreatest2nLessThan(int len) {
+    int k = 1;
+    while (k < len) k = k << 1; // 注意一定要加k=
+    return k >> 1;
+}
+
+// 任意双调排序归并
+void bitonicMergeAnyN(float *arr, int len, bool asd = true) {
+    if (len > 1) {
+        int m = getGreatest2nLessThan(len);
+        for (int i = 0; i < len - m; ++i) {
+
+            // 解决NaN问题
+            int low = i;
+            while (arr[low] == NaN && low < len - m) low++;
+            int high = i + m;
+            while (arr[high] == NaN && high < len) high++;
+
+            if (arr[low] > arr[high] == asd)
+                swap(arr[low], arr[high]); // 根据asd判断是否交换
+        }
+        bitonicMergeAnyN(arr, m, asd); // 一般情况下，m > len-m
+        bitonicMergeAnyN(arr + m, len - m, asd);
+    }
+}
+
+// 双调排序
+void bitonicSort(float *arr, int len, bool asd) { // asd 升序
+    if (len > 1) {
+        int m = len / 2;
+        bitonicSort(arr, m, !asd); // 前半降序
+        bitonicSort(arr + m, len - m, asd); // 后半升序
+        bitonicMergeAnyN(arr, len, asd);
+    }
+}
+
+/**
+ * 分段双调排序
+ * @param data 原始数据
+ * @param seg_id data 中 n 个元素各自所在的段编号
+ * @param seg_start 共有 m+1 个元素，前 m 个分别给出 0..m-1 共 m 个段的起始位置，seg_start[m] = n
+ * @param n data 中包含 n 个数据
+ * @param m data 分为 m 段数据
+ */
+void segmentedBitonicSort(float *data, int *seg_id, int *seg_start, int n, int m) {
+    bool asd = true;
+    for (int i = 0; i < m; ++i) {
+        float *arr = data + seg_start[i];
+        int len = seg_start[i + 1] - seg_start[i];
+        cout << "排序前 段 " << i << ": ";
+        printArr(arr, len);
+        bitonicSort(arr, len, asd);
+        cout << "排序后 段 " << i << ": ";
+        printArr(arr, len);
+    }
+}
+
+
+int main() {
+
+    float data[11] = {0.8, 0.2, 0.4, NaN, 0.6, 0.5, NaN, 0.2, 0.1, NaN, 0.01}; // 数列
+    int seg_id[11] = {0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2}; // id
+    int seg_start[4] = {0, 2, 6, 11}; // 段首位置
+    int n = 11; // 数据长度
+    int m = 3; // 数据段数
+
+    segmentedBitonicSort(data, seg_id, seg_start, n, m);
+}

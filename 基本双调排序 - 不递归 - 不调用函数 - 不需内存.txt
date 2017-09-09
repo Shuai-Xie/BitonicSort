@@ -1,0 +1,87 @@
+#include <iostream>
+#include <iomanip>
+
+using namespace std;
+
+// 打印数列
+void printArr(int *arr, int len) {
+    for (int i = 0; i < len; ++i) {
+        cout << setw(4) << arr[i];
+    }
+    cout << endl << endl;
+}
+
+// 双调排序
+void bitonicSort(int *arr, int len, bool asd) { // asd 升序
+
+    int left_min, left_max, right_min, right_max;
+
+    for (int step = 1; step < len; step *= 2) {
+
+        for (left_min = 0; left_min < len; left_min = right_max) {
+
+            left_max = left_min + step;
+            right_min = left_max;           // 右边起始位置
+            right_max = right_min + step;   // 右边终止位置 也是for中下一段的开始
+
+            if (right_max > len) right_max = len;   // 处理数列长度 !=2^n 的情况
+
+            int begin = left_min;
+            while (left_min < left_max && right_min < right_max) {
+                if (arr[left_min] > arr[right_min] == asd) swap(arr[left_min], arr[right_min]);
+                left_min++;
+                right_min++;
+            }
+
+
+            // 自上而下调整子序列
+            int c_step = step; // 2
+            while (c_step > 1) {
+                c_step /= 2;
+                int c_left_min, c_left_max, c_right_min, c_right_max;
+
+                for (c_left_min = begin; c_left_min < right_max; c_left_min = c_right_max) {
+
+                    c_left_max = c_left_min + c_step;
+                    c_right_min = c_left_max;
+                    c_right_max = c_right_min + c_step;
+
+                    while (c_left_min < c_left_max && c_right_min < c_right_max) {
+                        if (arr[c_left_min] > arr[c_right_min] == asd) {
+                            // swap(arr[c_left_min], arr[c_right_min])
+                            arr[c_left_min] = arr[c_left_min] ^ arr[c_right_min];
+                            arr[c_right_min] = arr[c_left_min] ^ arr[c_right_min];
+                            arr[c_left_min] = arr[c_left_min] ^ arr[c_right_min];
+                        }
+                        c_left_min++;
+                        c_right_min++;
+                    }
+                }
+            }
+            asd = !asd; // 改变排序规则
+        }
+
+
+    }
+
+}
+
+
+int main() {
+    int len = 16;
+    auto *arr = new int[len]; // 自动识别类型
+    bool asd = true; // 默认升序，改为false，降序排列
+
+    srandom((unsigned int) time(nullptr));
+    for (int i = 0; i < len; ++i)
+        arr[i] = (int) random() % 100; // 随机生成100内的正整数
+
+    cout << "无序序列: ";
+    printArr(arr, len);
+
+    bitonicSort(arr, len, asd);
+
+    cout << "有序序列: ";
+    printArr(arr, len); // 有序序列
+
+}
